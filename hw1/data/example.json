@@ -1,0 +1,32 @@
+[
+  {
+    "type": "bicycle",
+    "id": 1,
+    "gos_number": "BIKE-1",
+    "is_broken": false
+  },
+  {
+    "type": "scooter",
+    "id": 2,
+    "gos_number": "SCOOTER-2",
+    "is_broken": false,
+    "battery": 80
+  },
+  {
+    "type": "electric_bicycle",
+    "id": 3,
+    "gos_number": "EBIKE-3",
+    "is_broken": false,
+    "battery": 60
+  },
+  {
+    "type": "helmet",
+    "id": 4,
+    "size": 56
+  },
+  {
+    "type": "charge_station",
+    "id": 5,
+    "daily_energy_consumption": 5
+  }
+]
