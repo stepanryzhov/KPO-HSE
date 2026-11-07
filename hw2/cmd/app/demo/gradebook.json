@@ -1,0 +1,20 @@
+{
+  "student_ids": [1, 2, 3],
+  "last_criterion_id": 3,
+  "criteria": [
+    {"id": 1, "name": "Домашние работы", "max_score": 10, "weight": 0.25},
+    {"id": 2, "name": "Проект", "max_score": 10, "weight": 0.25},
+    {"id": 3, "name": "Экзамен", "max_score": 10, "weight": 0.5}
+  ],
+  "evaluations": [
+    {"student_id": 1, "criterion_id": 1, "score": 8},
+    {"student_id": 1, "criterion_id": 2, "score": 9},
+    {"student_id": 1, "criterion_id": 3, "score": 10},
+    {"student_id": 2, "criterion_id": 1, "score": 7},
+    {"student_id": 2, "criterion_id": 2, "score": 8},
+    {"student_id": 2, "criterion_id": 3, "score": 9},
+    {"student_id": 3, "criterion_id": 1, "score": 10},
+    {"student_id": 3, "criterion_id": 2, "score": 9},
+    {"student_id": 3, "criterion_id": 3, "score": 8}
+  ]
+}
