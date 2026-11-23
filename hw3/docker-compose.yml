@@ -1,0 +1,34 @@
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: cmd/gateway/Dockerfile
+    environment:
+      STORAGE_URL: http://storage:8081
+      ANALYZE_URL: http://analyze:8082
+    ports:
+      - "8080:8080"
+    depends_on:
+      - storage
+      - analyze
+
+  storage:
+    build:
+      context: .
+      dockerfile: cmd/storage/Dockerfile
+    environment:
+      STORAGE_DATA_DIR: /data
+    volumes:
+      - storage_data:/data
+
+  analyze:
+    build:
+      context: .
+      dockerfile: cmd/analyze/Dockerfile
+    environment:
+      STORAGE_URL: http://storage:8081
+    depends_on:
+      - storage
+
+volumes:
+  storage_data:

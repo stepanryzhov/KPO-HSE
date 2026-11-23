@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Сдачи по заданию {{.AssignmentID}}</title>
+</head>
+<body>
+  <main>
+    <h1>Сдачи по заданию {{.AssignmentID}}</h1>
+    <p>Всего {{.Counts.Total}} · Прошли проверку {{.Counts.Passed}} · Не прошли {{.Counts.Failed}} · Без результата {{.Counts.Pending}}</p>
+    <table>
+      <thead>
+        <tr><th scope="col">Студент</th><th scope="col">Результат</th><th scope="col">Сообщение</th></tr>
+      </thead>
+      <tbody>
+        {{range .Submissions}}
+        <tr>
+          <td><a href="?student_id={{.StudentID}}&amp;format=html">{{.StudentID}}</a></td>
+          <td>{{reportStatus .Report}}</td>
+          <td>{{with .Report}}{{.Message}}{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

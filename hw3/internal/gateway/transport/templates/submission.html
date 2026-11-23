@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Отчёт по сдаче {{.SubmissionID}}</title>
+</head>
+<body>
+  <main>
+    <h1>Отчёт по сдаче {{.SubmissionID}}</h1>
+    <dl>
+      <dt>Задание</dt><dd>{{.AssignmentID}}</dd>
+      <dt>Студент</dt><dd>{{.StudentID}}</dd>
+      <dt>Время сдачи</dt><dd><time datetime="{{.SubmittedAt.Format "2006-01-02T15:04:05Z07:00"}}">{{submittedAt .SubmittedAt}}</time></dd>
+      <dt>Результат</dt><dd>{{reportStatus .Report}}</dd>
+    </dl>
+    {{with .Report}}<p>{{.Message}}</p>{{end}}
+    <p><a href="?format=html">Все сдачи по заданию</a></p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,354 @@
+openapi: 3.1.0
+info:
+  title: ВышBuild API
+  version: 0.1.0
+  description: Публичный API Gateway для загрузки и проверки учебных сдач.
+
+paths:
+  /assignments/{assignment_id}:
+    parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        description: Идентификатор задания.
+        schema:
+          $ref: '#/components/schemas/Identifier'
+        example: hw3
+    post:
+      operationId: submitAssignment
+      summary: Загрузить или заменить сдачу
+      description: |
+        Gateway сохраняет ZIP, синхронно вызывает Analyze и записывает отчёт.
+        Повторная загрузка для той же пары задания и студента сохраняет `submission_id`.
+      parameters:
+        - name: student_id
+          in: query
+          required: true
+          description: Идентификатор студента.
+          schema:
+            $ref: '#/components/schemas/Identifier'
+          example: '42'
+      requestBody:
+        required: true
+        description: Исходные байты ZIP-архива. Лимит по умолчанию составляет 10 МиБ.
+        content:
+          application/zip: {}
+      responses:
+        '201':
+          description: Первая сдача сохранена и проверена.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckedSubmission'
+              examples:
+                passed:
+                  $ref: '#/components/examples/PassedSubmission'
+        '200':
+          description: Сдача заменена и проверена.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckedSubmission'
+              example:
+                submission_id: sub-001
+                assignment_id: hw3
+                student_id: '42'
+                submitted_at: '2026-11-23T10:15:00Z'
+                report:
+                  status: failed
+                  success: false
+                  message: В архиве нет main.go
+        '400':
+          description: >-
+            Отсутствующий или пустой student_id, неподдерживаемый тип тела,
+            некорректный ZIP или превышение лимита загрузки.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: Некорректный ZIP-архив
+        '409':
+          description: Более свежая загрузка заменила архив во время проверки.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
+                  - type: object
+                    required: [submission_id]
+              example:
+                message: Сдача уже обновлена
+                submission_id: sub-001
+        '503':
+          description: >-
+            Сервис недоступен или не ответил вовремя.
+            После подтверждения сохранения ZIP ответ включает submission_id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      operationId: getAssignmentSubmissions
+      summary: Получить сдачу студента или сводку по заданию
+      description: |
+        С параметром `student_id` возвращает текущую сдачу этого студента.
+        Без него возвращает сводку по заданию из пути запроса.
+
+        Ошибки возвращаются в выбранном формате. Пустой или неизвестный `format` даёт `400` в JSON.
+      parameters:
+        - name: student_id
+          in: query
+          description: Идентификатор студента для получения одной сдачи. Пустое значение даёт 400.
+          schema:
+            $ref: '#/components/schemas/Identifier'
+          example: '42'
+        - name: format
+          in: query
+          description: >-
+            Формат сводки или одной сдачи. HTML возвращается с заголовком
+            `Content-Type: text/html; charset=utf-8`.
+          schema:
+            type: string
+            enum: [json, html]
+            default: json
+      responses:
+        '200':
+          description: |
+            Текущая сдача при указанном `student_id` или сводка по заданию без него.
+            Если по заданию нет сдач, сводка содержит пустой список и нулевые счётчики.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Submission'
+                  - $ref: '#/components/schemas/AssignmentSummary'
+              examples:
+                submission:
+                  $ref: '#/components/examples/PassedSubmission'
+                pendingSubmission:
+                  summary: Сдача до записи отчёта
+                  value:
+                    submission_id: sub-001
+                    assignment_id: hw3
+                    student_id: '42'
+                    submitted_at: '2026-11-23T10:00:00Z'
+                    report: null
+                summary:
+                  summary: Сводка по заданию
+                  value:
+                    submissions:
+                      - submission_id: sub-001
+                        assignment_id: hw3
+                        student_id: '42'
+                        submitted_at: '2026-11-23T10:00:00Z'
+                        report:
+                          status: passed
+                          success: true
+                          message: В архиве найден main.go
+                      - submission_id: sub-002
+                        assignment_id: hw3
+                        student_id: '43'
+                        submitted_at: '2026-11-23T10:20:00Z'
+                        report:
+                          status: failed
+                          success: false
+                          message: В архиве нет main.go
+                    counts:
+                      total: 2
+                      passed: 1
+                      failed: 1
+                      pending: 0
+            text/html:
+              schema:
+                type: string
+              examples:
+                submission:
+                  summary: Отчёт одной сдачи при format=html и student_id=42
+                  value: |
+                    <!doctype html>
+                    <html lang="ru">
+                    <head>
+                      <meta charset="utf-8">
+                      <title>Отчёт по сдаче sub-001</title>
+                    </head>
+                    <body>
+                      <h1>Отчёт по сдаче sub-001</h1>
+                      <dl>
+                        <dt>Задание</dt><dd>hw3</dd>
+                        <dt>Студент</dt><dd>42</dd>
+                        <dt>Время сдачи</dt>
+                        <dd><time datetime="2026-11-23T10:00:00Z">23 ноября 2026, 13:00 МСК</time></dd>
+                        <dt>Результат</dt><dd>Проверка пройдена</dd>
+                      </dl>
+                      <p>В архиве найден <code>main.go</code>.</p>
+                      <p><a href="?format=html">Все сдачи по заданию</a></p>
+                    </body>
+                    </html>
+                summary:
+                  summary: Сводка по заданию при format=html
+                  value: |
+                    <!doctype html>
+                    <html lang="ru">
+                    <head>
+                      <meta charset="utf-8">
+                      <title>Сдачи по заданию hw3</title>
+                    </head>
+                    <body>
+                      <h1>Сдачи по заданию hw3</h1>
+                      <p>Всего 2 · Прошли проверку 1 · Не прошли 1 · Без результата 0</p>
+                      <table>
+                        <thead>
+                          <tr><th>Студент</th><th>Результат</th><th>Сообщение</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><a href="?student_id=42&amp;format=html">42</a></td>
+                            <td>Проверка пройдена</td>
+                            <td>В архиве найден main.go</td>
+                          </tr>
+                          <tr>
+                            <td><a href="?student_id=43&amp;format=html">43</a></td>
+                            <td>Проверка не пройдена</td>
+                            <td>В архиве нет main.go</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </body>
+                    </html>
+        '400':
+          description: Пустой student_id либо пустой или неизвестный format. При ошибке в format ответ возвращается в JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: Допустимые значения format — json и html
+            text/html:
+              schema:
+                type: string
+        '404':
+          description: Запрошенная сдача студента отсутствует.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: Решение не найдено
+            text/html:
+              schema:
+                type: string
+              example: |
+                <!doctype html>
+                <html lang="ru">
+                <head><meta charset="utf-8"><title>Решение не найдено</title></head>
+                <body><h1>Решение не найдено</h1></body>
+                </html>
+        '503':
+          description: Сервис хранения недоступен или не ответил вовремя.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/html:
+              schema:
+                type: string
+
+components:
+  schemas:
+    Identifier:
+      type: string
+      minLength: 1
+    BuildReport:
+      type: object
+      required: [status, success, message]
+      properties:
+        status:
+          type: string
+          enum: [passed, failed]
+        success:
+          type: boolean
+        message:
+          type: string
+      oneOf:
+        - properties:
+            status:
+              const: passed
+            success:
+              const: true
+        - properties:
+            status:
+              const: failed
+            success:
+              const: false
+    Submission:
+      type: object
+      required: [submission_id, assignment_id, student_id, submitted_at, report]
+      properties:
+        submission_id:
+          $ref: '#/components/schemas/Identifier'
+        assignment_id:
+          $ref: '#/components/schemas/Identifier'
+        student_id:
+          $ref: '#/components/schemas/Identifier'
+        submitted_at:
+          type: string
+          format: date-time
+        report:
+          description: Результат проверки. До записи результата значение равно null.
+          oneOf:
+            - $ref: '#/components/schemas/BuildReport'
+            - type: 'null'
+    CheckedSubmission:
+      allOf:
+        - $ref: '#/components/schemas/Submission'
+        - type: object
+          properties:
+            report:
+              $ref: '#/components/schemas/BuildReport'
+    AssignmentSummary:
+      type: object
+      required: [submissions, counts]
+      properties:
+        submissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Submission'
+        counts:
+          type: object
+          required: [total, passed, failed, pending]
+          properties:
+            total:
+              type: integer
+              minimum: 0
+            passed:
+              type: integer
+              minimum: 0
+            failed:
+              type: integer
+              minimum: 0
+            pending:
+              type: integer
+              minimum: 0
+              description: Количество сдач с report равным null.
+    ErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+        submission_id:
+          description: Идентификатор сдачи при ошибке после подтверждения сохранения ZIP.
+          $ref: '#/components/schemas/Identifier'
+  examples:
+    PassedSubmission:
+      summary: Сдача с успешной проверкой
+      value:
+        submission_id: sub-001
+        assignment_id: hw3
+        student_id: '42'
+        submitted_at: '2026-11-23T10:00:00Z'
+        report:
+          status: passed
+          success: true
+          message: В архиве найден main.go
