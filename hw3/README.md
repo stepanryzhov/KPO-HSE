@@ -51,8 +51,6 @@ curl -i 'http://localhost:8080/assignments/hw3?student_id=42' \
 
 Для обоих GET Gateway читает данные из Storage и по умолчанию возвращает JSON. Добавьте `format=html`, чтобы открыть отчёт или сводку в браузере.
 
-Для демонстрации в Postman импортируйте контракт, укажите `baseUrl` равным `http://localhost:8080` и выберите **Body → binary** для загрузки ZIP. [Контракт OpenAPI](api/openapi.yaml)
-
 ## Использование ИИ
 
-ИИ написал тесты  и подготовил README, а также помог с реализацией слоя `repository` в Storage.
+ИИ написал тесты  и подготовил README, а также помог с реализацией слоя `repository` в Storage. Контракт openapi тоже написан с ИИ. 
